@@ -1,2 +1,3 @@
 # bias-behind-bars-replication
-Replicate
+
+This analysis is an attempt at replicating the results in "Bias Behind Barssc"

@@ -1,0 +1,555 @@
+---
+title: "An Attempt at Replicating 'Bias Behind Bars' and Arriving at Different Results"
+author: "Jasmine Carlos"
+thanks: "Code and data are available at: https://github.com/jasminekcarlos/bias-behind-bars-replication"
+date: "22 December 2020"
+abstract: |
+  | This study is an attempt at replicating the results found by the Globe and 
+  Mail investigation entitled 'Bias Behind Bars'. This was done by following the 
+  steps outlined by the investigators which proved to be difficult due to a lack
+  of clarity. I focused on the relationship between race and the scores 
+  for security level and reintegration score, finding that the relationships found
+  by the Globe and Mail were not as strong as they had led on. This is important 
+  in showcasing the importance of the reproducibility of studies, especially with
+  those that receive a great deal of public attention.
+output:
+  bookdown::pdf_document2:
+    citation_package: natbib
+toc: FALSE
+bibliography: references.bib
+---
+
+Note that all code and data used in this analysis can be found at the following link: https://github.com/jasminekcarlos/bias-behind-bars-replication
+
+The following report is written using R (@citeR). The file was compiled using rmarkdown (@citermarkdown). The following packages were used: tidyverse (@citetidyverse), readr (@citereadr), dplyr (@citedplyr), knitr (@citeknitr), ggplot2 (@citeggplot2), kableExtra (@citekableExtra), broom (@citebroom), here (@citehere), bookdown (@citebookdown) and haven (@citehaven). The following articles were referenced: (@biasarticle) and (@howdid).
+
+```{r loading packages, include=FALSE}
+library(tidyverse)
+library(readr)
+library(dplyr)
+library(knitr)
+library(ggplot2)
+library(kableExtra)
+library(broom)
+library(here)
+library(bookdown)
+library(haven)
+```
+
+
+```{r read in all data, include=FALSE}
+
+
+raw_data <- read.csv("C:/Users/owner/STA304 Admin/bias-behind-bars-replication/inputs/The_Globe_and_Mail_CSC_OMS_2012-2018_20201022235635.csv")
+
+
+
+
+```
+
+```{r read in cleaning code and models, include=FALSE}
+
+# Group the various races into the following categories:black, indigenous, white
+# and other
+
+race_grouped_data <- raw_data %>%
+  mutate(
+    RACE_GROUPED = case_when(
+      RACE == "Black" ~ "Black",
+      RACE == "White" ~ "White",
+      RACE == "Metis" ~ "Indigenous",
+      RACE == "Inuit" ~ "Indigenous",
+      RACE == "North American" ~ "Indigenous",
+      RACE == "S. E. Asian" ~ "Other",
+      RACE == "Arab/West Asian" ~ "Other",
+      RACE == "Chinese" ~ "Other",
+      RACE == "Asiatic" ~ "Other",
+      RACE == "Unknown" ~ "Other",
+      RACE == "Other" ~ "Other",
+      RACE == "Korean" ~ "Other",
+      RACE == "Filipino" ~ "Other",
+      RACE == "Latin American" ~ "Other",
+      RACE == "South Asian" ~ "Other",
+      RACE == "East Indian" ~ "Other",
+      RACE == "Hispanic" ~ "Other",
+      RACE == "Japanese" ~ "Other",
+      RACE == "Multirac/Ethnic" ~ "Other",
+      RACE == "Caribbean" ~ "Other",
+      RACE == "Unable Specify" ~ "Other",
+      RACE == "Euro.-Southern" ~ "Other",
+      RACE == "Asi-E/Southeast" ~ "Other",
+      RACE == "Arab" ~ "Other",
+      RACE == "Euro.-Eastern" ~ "Other",
+      RACE == "Oceania" ~ "Other",
+      RACE == "Asian-South" ~ "Other",
+      RACE == "Euro.-Western" ~ "Other",
+      RACE == "Sub-Sahara Afri" ~ "Other",
+      RACE == "Asian-West" ~ "Other",
+      RACE == "European French" ~ "Other",
+      RACE == "British Isles" ~ "Other",
+      RACE == "Euro.-Northern" ~ "Other",
+    ) 
+  ) %>%
+  filter(!RACE_GROUPED == 'NA') %>%
+  filter(!OFFENDER.SECURITY.LEVEL == 'NA') %>%
+  filter(!OFFENDER.SECURITY.LEVEL == '') %>%
+  filter(!REINTEGRATION.POTENTIAL == 'NA')%>%
+  filter(!REINTEGRATION.POTENTIAL == '')
+
+# Make the model
+
+# Model that looked at how race affects an inmate's security level (high vs 
+# medium or low score) for females
+
+reduc_mod1F_dat <-
+  race_grouped_data %>%
+  select(RACE_GROUPED,
+         GENDER,
+         OFFENDER.SECURITY.LEVEL)
+
+filt_mod1F_dat <-
+  reduc_mod1F_dat %>%
+  filter(!RACE_GROUPED == 'NA') %>%
+  filter(!GENDER == 'NA') %>%
+  filter(!OFFENDER.SECURITY.LEVEL == 'NA') %>%
+  filter(GENDER == "FEMALE") %>%
+  mutate(
+    OFFENDER.SECURITY.GROUP = case_when(
+      OFFENDER.SECURITY.LEVEL == "MINIMUM" ~ "Not Max",
+      OFFENDER.SECURITY.LEVEL == "MEDIUM" ~ "Not Max",
+      OFFENDER.SECURITY.LEVEL == "MAXIMUM" ~ "Max") 
+  ) %>%
+  filter(!OFFENDER.SECURITY.GROUP == 'NA') %>%
+  mutate(
+    OFFENDER.SECURITY.BINARY = case_when(
+      OFFENDER.SECURITY.GROUP == "Not Max" ~ 0,
+      OFFENDER.SECURITY.GROUP == "Max" ~ 1,)
+  ) %>%
+  filter(!OFFENDER.SECURITY.BINARY == 'NA') 
+
+model1F <- glm(OFFENDER.SECURITY.BINARY ~  as.factor(RACE_GROUPED),
+               data = filt_mod1F_dat, 
+               family = binomial)
+
+summary(model1F)
+
+# Model that looked at how race affects an inmate's security level (high vs 
+# medium or low score) for males
+
+reduc_mod1M_dat <-
+  race_grouped_data %>%
+  select(RACE_GROUPED,
+         GENDER,
+         OFFENDER.SECURITY.LEVEL)
+
+filt_mod1M_dat <-
+  reduc_mod1M_dat %>%
+  filter(!RACE_GROUPED == 'NA') %>%
+  filter(!GENDER == 'NA') %>%
+  filter(!OFFENDER.SECURITY.LEVEL == 'NA') %>%
+  filter(GENDER == "MALE") %>%
+  mutate(
+    OFFENDER.SECURITY.GROUP = case_when(
+      OFFENDER.SECURITY.LEVEL == "MINIMUM" ~ "Not Max",
+      OFFENDER.SECURITY.LEVEL == "MEDIUM" ~ "Not Max",
+      OFFENDER.SECURITY.LEVEL == "MAXIMUM" ~ "Max") 
+  ) %>%
+  filter(!OFFENDER.SECURITY.GROUP == 'NA') %>%
+  mutate(
+    OFFENDER.SECURITY.BINARY = case_when(
+      OFFENDER.SECURITY.GROUP == "Not Max" ~ 0,
+      OFFENDER.SECURITY.GROUP == "Max" ~ 1,)
+  ) %>%
+  filter(!OFFENDER.SECURITY.BINARY == 'NA') 
+
+model1M <- glm(OFFENDER.SECURITY.BINARY ~  as.factor(RACE_GROUPED),
+               data = filt_mod1M_dat, 
+               family = binomial)
+
+summary(model1M)
+
+# Model that looked at how race affects the reintegration score (low vs 
+# medium or high) for females
+
+reduc_mod2F_dat <-
+  race_grouped_data %>%
+  select(RACE_GROUPED,
+         GENDER,
+         REINTEGRATION.POTENTIAL)
+
+filt_mod2F_dat <-
+  reduc_mod2F_dat %>%
+  filter(!RACE_GROUPED == 'NA') %>%
+  filter(!GENDER == 'NA') %>%
+  filter(!REINTEGRATION.POTENTIAL == 'NA') %>%
+  filter(GENDER == "FEMALE") %>%
+  mutate(
+    REINTEGRATION.POTENTIAL.GROUP = case_when(
+      REINTEGRATION.POTENTIAL == "LOW" ~ "Low",
+      REINTEGRATION.POTENTIAL == "MEDIUM" ~ "Not Low",
+      REINTEGRATION.POTENTIAL == "HIGH" ~ "Not Low") 
+  ) %>%
+  filter(!REINTEGRATION.POTENTIAL.GROUP == 'NA') %>%
+  mutate(
+    REINTEGRATION.POTENTIAL.BINARY = case_when(
+      REINTEGRATION.POTENTIAL.GROUP == "Not Low" ~ 0,
+      REINTEGRATION.POTENTIAL.GROUP == "Low" ~ 1,)
+  ) %>%
+  filter(!REINTEGRATION.POTENTIAL.BINARY == 'NA') 
+
+model2F <- glm(REINTEGRATION.POTENTIAL.BINARY ~  as.factor(RACE_GROUPED),
+               data = filt_mod2F_dat, 
+               family = binomial)
+
+summary(model2F)
+
+
+# Model that looked at how race affects the reintegration score (low vs 
+# medium or high) for males
+
+reduc_mod2M_dat <-
+  race_grouped_data %>%
+  select(RACE_GROUPED,
+         GENDER,
+         REINTEGRATION.POTENTIAL)
+
+filt_mod2M_dat <-
+  reduc_mod2M_dat %>%
+  filter(!RACE_GROUPED == 'NA') %>%
+  filter(!GENDER == 'NA') %>%
+  filter(!REINTEGRATION.POTENTIAL == 'NA') %>%
+  filter(GENDER == "MALE") %>%
+  mutate(
+    REINTEGRATION.POTENTIAL.GROUP = case_when(
+      REINTEGRATION.POTENTIAL == "LOW" ~ "Low",
+      REINTEGRATION.POTENTIAL == "MEDIUM" ~ "Not Low",
+      REINTEGRATION.POTENTIAL == "HIGH" ~ "Not Low") 
+  ) %>%
+  filter(!REINTEGRATION.POTENTIAL.GROUP == 'NA') %>%
+  mutate(
+    REINTEGRATION.POTENTIAL.BINARY = case_when(
+      REINTEGRATION.POTENTIAL.GROUP == "Not Low" ~ 0,
+      REINTEGRATION.POTENTIAL.GROUP == "Low" ~ 1,)
+  ) %>%
+  filter(!REINTEGRATION.POTENTIAL.BINARY == 'NA') 
+
+model2M <- glm(REINTEGRATION.POTENTIAL.BINARY ~  as.factor(RACE_GROUPED),
+               data = filt_mod2M_dat, 
+               family = binomial)
+
+summary(model2M)  
+  
+
+```
+
+# Introduction
+
+There was been a continued discussion about race relations in Canada, specifically when it comes to discrimination against the Black and Indigenous communities. Many individuals who are members of these communities have claimed that they have been treated unfairly from many angles whether it be in the opportunities afforded to them or the treatment they are given by others in society. This discussion has been brought to the forefront lately due to the blatant systematic discrimination within the criminal justice system of the united States of America. Many people both in and out of the USA are tired of how minority groups have historically been treated. Due to the events in the USA this has forced many in Canada to take a deeper look at what is happening in our own country.
+
+On October 24, 2020 the Globe and Mail published an article entitled "Bias behind bars: A Globe investigation finds a prison system stacked against Black and Indigenous inmates" (@biasarticle), a report authored by data journalist Tom Cardoso. This analysis was done by using observational data requested from the supreme court on inmates in custody. After having conducted their analysis they claimed to have found that there is a powerful bias against those who belong to black and indigenous communities. It made the claim that Black when were 24% more likely to receive a maximum initial security score and Indigenous men were 30% more likely to receive a worst reintegration score than their white counterparts.
+
+The following is an investigation into whether or not the conclusions found can be reproduced by following the steps outlined in the supplementary article entitled "How we did it: How The Globe uncovered systemic bias in prisoners' risk assessments" (@howdid). I focused on 4 of the models that they outlined. This was the relationship between race and the two scores of offender security level and reintegration score for both males and females. I first cleaned the raw data provided by Globe and Mail, organizing it into the same race groups they used which are black, indigenous, white and other. I then used logistic regression to investigate the relationship between these race groups and the scores mentioned above. I found that not only was the relationship they mentioned not as strong as they had claimed but also the opposite effect for some variables. This results was likely due to the fact that many of the instructions were not clear and not all the appropriate materials were provided in order to make the report reproducible, something that is extremely important in statistical analysis.
+
+# Data
+
+The data used in this analysis was easily provided by the Globe and Mail in the form of a download link in their article but those who conducted the original investigation went through a great deal in order to receive this data. When an inmate first enters the system the Correctional Service of Canada (CSC) collects a multitude of information about each offender. These records include basic demographics such as the age, gender and religion of the inmate as well as more subjective criteria such as an offender's security level. When the Globe and Mail began its journey of investigating racial bias within the Canadian prison system they believed that this was the information they needed. They petitioned the CSC under the freedom of information in order to receive the data they needed.
+
+After many months of waiting and going through many levels of bureaucracy the CSC agreed to release seven years worth of entries from the year 2012 to 2018. This observational data set consisted of 744,958 rows and 25 columns, which documents 50,116 people in custody or supervised release. This same data set is what we used in our analysis. This data set consists of information from psychological evaluations and initial interviews of inmates. There are many interesting variables included but for the purpose of this analysis we focused on the variables of gender, race, offender security level and reintegration potential score.
+
+Using R Studio (@citeR), the graphs listed below illustrate the distribution of the individual variables as well as their relation to the variable of interest.
+
+```{r,echo=FALSE}
+# Distribution of race
+
+race_graph <- race_grouped_data %>%
+  ggplot( aes(x = RACE_GROUPED)) + 
+  geom_bar() +
+  theme(axis.text.x  = element_text(angle=45, hjust = 1)) +
+  geom_text(stat="count", aes(label=sprintf("%.01f %%",..count../sum(..count..)*100)))+
+  labs(
+    title = "Figure 1: Distribution of Races in Prison",
+    x = "Race Groups",
+    y = "Number of Prisoners",
+    caption = "Source: Globe and Mail")
+
+race_graph
+```
+
+In Figure 1 the distribution of the race of inmates is exhibited. On the x-axis are the race groups used in the Globe and Mail investigation which are black, indigenous, other and white. It can be seen that the prison population is 7.1% black, 21.1% indigenous, 6.1% other and 65.6% white.
+
+```{r, echo=FALSE}
+
+# Race Compared to Offender Security Level
+
+offender_race_graph <-
+  race_grouped_data %>%
+  ggplot(aes(x = OFFENDER.SECURITY.LEVEL, fill= RACE_GROUPED)) +
+  geom_bar(stat="count") +
+  theme(axis.text.x  = element_text(angle=45, hjust = 1)) +
+  labs(
+    title = "Figure 2: Distribution of Race Groups over Offender Security Level",
+    x = "Offender Security Level",
+    y = "Number of Prisoners",
+    fill = "Race Group",
+    caption = "Source: Globe and Mail)")
+
+offender_race_graph
+
+```
+
+In Figure 2 the distribution of race groups over the various offender security levels is shown. The x-axis has the offender security levels which are minimum, medium and maximum. It can be seen that a larger proportion of people of colour received a medium or maximum offender security level compared to white inmates. 
+
+```{r, echo=FALSE}
+# White distribution of Offender Security Level
+
+offender_race_graph_white <-
+  race_grouped_data %>%
+  filter(RACE_GROUPED == "White") %>%
+  ggplot(aes(x = OFFENDER.SECURITY.LEVEL, fill= RACE_GROUPED)) +
+  geom_bar(stat="count") +
+  geom_text(stat="count", aes(label=sprintf("%.01f %%",..count../sum(..count..)*100)))+
+  theme(axis.text.x  = element_text(angle=45, hjust = 1)) +
+  labs(
+    title = "Figure 3: Distribution of White Offenders over Offender Security Level",
+    x = "Offender Security Level",
+    y = "Number of Prisoners",
+    fill = "White Offenders",
+    caption = "Source: Globe and Mail)")
+
+offender_race_graph_white
+```
+
+In Figure 3 the distribution of white offenders over the various offender security levels is shown. The x-axis shows the security levels which are minimum, medium and maximum. For white offenders 29.1% were in the minimum level, 57.9% were in the medium level and 13.0% were in the maximum level.
+
+```{r, echo=FALSE}
+# Black distribution of Offender Security Level
+
+offender_race_graph_black <-
+  race_grouped_data %>%
+  filter(RACE_GROUPED == "Black") %>%
+  ggplot(aes(x = OFFENDER.SECURITY.LEVEL, fill= RACE_GROUPED)) +
+  geom_bar(stat="count") +
+  geom_text(stat="count", aes(label=sprintf("%.01f %%",..count../sum(..count..)*100)))+
+  theme(axis.text.x  = element_text(angle=45, hjust = 1)) +
+  labs(
+    title = "Figure 4: Distribution of Black Offenders over Offender Security Level",
+    x = "Offender Security Level",
+    y = "Number of Prisoners",
+    fill = "Black Offenders",
+    caption = "Source: Globe and Mail)")
+
+offender_race_graph_black
+```
+
+In Figure 4 the distribution of black offenders over the various offender security levels is shown. The x-axis shows the security levels which are minimum, medium and maximum. For black offenders 19.5% were in the minimum level, 60.4% were in the medium level and 20.2% were in the maximum level.
+
+```{r, echo=FALSE}
+# Indigenous distribution of Offender Security Level
+
+offender_race_graph_ind <-
+  race_grouped_data %>%
+  filter(RACE_GROUPED == "Indigenous") %>%
+  ggplot(aes(x = OFFENDER.SECURITY.LEVEL, fill= RACE_GROUPED)) +
+  geom_bar(stat="count") +
+  geom_text(stat="count", aes(label=sprintf("%.01f %%",..count../sum(..count..)*100)))+
+  theme(axis.text.x  = element_text(angle=45, hjust = 1)) +
+  labs(
+    title = "Figure 5: Distribution of Indigenous Offenders over Offender Security Level",
+    x = "Offender Security Level",
+    y = "Number of Prisoners",
+    fill = "Indigenous Offenders",
+    caption = "Source: Globe and Mail)")
+
+offender_race_graph_ind
+```
+
+In Figure 5 the distribution of indigenous offenders over the various offender security levels is shown. The x-axis shows the security levels which are minimum, medium and maximum. For indigenous offenders 21.3% were in the minimum level, 60.9% were in the medium level and 17.9% were in the maximum level.
+
+```{r, echo=FALSE}
+# Race Compared to Reintegration Score
+
+reintegration_race_graph <-
+  race_grouped_data %>%
+  ggplot(aes(x = REINTEGRATION.POTENTIAL, fill= RACE_GROUPED)) +
+  geom_bar(stat="count") +
+  theme(axis.text.x  = element_text(angle=45, hjust = 1)) +
+  labs(
+    title = "Figure 6: Distribution of Race Groups over Reintegration Score",
+    x = "Reintegration Score",
+    y = "Number of Prisoners",
+    fill = "Race Group",
+    caption = "Source: Globe and Mail)")
+
+reintegration_race_graph
+```
+
+In Figure 6 the distribution of race groups over the various reintegration scores is shown. The x-axis has the possible reintegration scores which are low, medium and high. It can be seen that a larger proportion of people of colour received a low or medium reintegration score compared to white inmates.
+
+```{r, echo=FALSE}
+# White Distribution of Reintegration Score
+
+reintegration_race_graph_white <-
+  race_grouped_data %>%
+  filter(RACE_GROUPED == "White") %>%
+  ggplot(aes(x = REINTEGRATION.POTENTIAL, fill= RACE_GROUPED)) +
+  geom_bar(stat="count") +
+  geom_text(stat="count", aes(label=sprintf("%.01f %%",..count../sum(..count..)*100)))+
+  theme(axis.text.x  = element_text(angle=45, hjust = 1)) +
+  labs(
+    title = "Figure 7: Distribution of White Offenders over Reintegration Score",
+    x = "Reintegration Score",
+    y = "Number of Prisoners",
+    fill = "White Offenders",
+    caption = "Source: Globe and Mail)")
+
+reintegration_race_graph_white
+```
+
+In Figure 7 the distribution of white offenders over the various reintegration scores is shown. The x-axis shows the possible reintegration scores which are low, medium and high. For white offenders 38.2% were given a low score, 43.4% were given a medium score and 18.4% were given a high score.
+
+```{r, echo=FALSE}
+# Black Distribution of Reintegration Score
+
+reintegration_race_graph_black <-
+  race_grouped_data %>%
+  filter(RACE_GROUPED == "Black") %>%
+  ggplot(aes(x = REINTEGRATION.POTENTIAL, fill= RACE_GROUPED)) +
+  geom_bar(stat="count") +
+  geom_text(stat="count", aes(label=sprintf("%.01f %%",..count../sum(..count..)*100)))+
+  theme(axis.text.x  = element_text(angle=45, hjust = 1)) +
+  labs(
+    title = "Figure 8: Distribution of Black Offenders over Reintegration Score",
+    x = "Reintegration Score",
+    y = "Number of Prisoners",
+    fill = "Black Offenders",
+    caption = "Source: Globe and Mail)")
+
+reintegration_race_graph_black
+```
+
+In Figure 8 the distribution of black offenders over the various reintegration scores is shown. The x-axis shows the possible reintegration scores which are low, medium and high. For black offenders 40.6% were given a low score, 43.0% were given a medium score and 16.4% were given a high score.
+
+```{r, echo=FALSE}
+# Indigenous Distribution of Reintegration Score
+
+reintegration_race_graph_ind <-
+  race_grouped_data %>%
+  filter(RACE_GROUPED == "Indigenous") %>%
+  ggplot(aes(x = REINTEGRATION.POTENTIAL, fill= RACE_GROUPED)) +
+  geom_bar(stat="count") +
+  geom_text(stat="count", aes(label=sprintf("%.01f %%",..count../sum(..count..)*100)))+
+  theme(axis.text.x  = element_text(angle=45, hjust = 1)) +
+  labs(
+    title = "Figure 9: Distribution of Indigenous Offenders over Reintegration Score",
+    x = "Reintegration Score",
+    y = "Number of Prisoners",
+    fill = "Indigenous Offenders",
+    caption = "Source: Globe and Mail)")
+
+reintegration_race_graph_ind
+
+```
+
+In Figure 9 the distribution of indigenous offenders over the various reintegration scores is shown. The x-axis shows the possible reintegration scores which are low, medium and high. For indigenous offenders 49.5% were given a low score, 41.7% were given a medium score and 8.9% were given a high score.
+
+# Model
+
+In this analysis we try to replicate the models used in the original investigation done by the Globe and Mail. I chose to focus on 4 models which deal with the offender security level and reintegration score for males and females. All of these models used logistic regression as this is what the Globe and Mail did. When going through the Globe and Mail's article outlining the process they went through to achieve the results that they did it was not entirely clear which variables they specifically used for each model. It was clear that they wanted to look at the relationship between race and the two scores but it was not clear whether or not they included other variables. They mentioned various variables such as age and prior history but did not specify if they went on to use these variables in all the subsequent models. Therefore I chose to simply do a direct relationship between the score and the various race groups
+
+The first model can be described by the following equation.
+
+$$P(y = Female,Max Security) = \mbox{logit}^{-1}\left(\alpha^{race group}\right) $$
+In this model we are calculating the probability that a female inmate is going to receive a maximum offender security level designation or not. A maximum offender security level designation tends to mean that the inmate has a tougher and more restricted experience while incarcerated. We took these categorical variables and converted them into binary numerical variables in order to model them. A maximum designation is represented by the value of 1 while medium and low designations are represented by the value of 0. In order to predict the likelihood of a maximum designation I used the predictor variable of race group which is represented by the symbol $$\alpha^{race group}$$ in the model.
+
+The second model can be described by the following equation.
+
+$$P(y = Male,Max Secuity) = \mbox{logit}^{-1}\left(\beta^{race group}\right) $$
+In this model we are calculating the probability that a male inmate is going to receive a maximum offender security level designation or not. A maximum offender security level designation tends to mean that the inmate has a tougher and more restricted experience while incarcerated. We took these categorical variables and converted them into binary numerical variables in order to model them. A maximum designation is represented by the value of 1 while medium and low designations are represented by the value of 0. In order to predict the likelihood of a maximum designation I used the predictor variable of race group which is represented by the symbol $$\beta^{race group}$$ in the model.
+
+The third model can be described by the following equation.
+
+$$P(y = Female,Low Reintegration) = \mbox{logit}^{-1}\left(\lambda^{race group}\right) $$
+In this model we are calculating the probability that a female inmate is going to receive a low reintegration score or not. A low reintegration score tends to mean that the inmate has a tougher when released, not afforded the proper resource in order to rehabilitate themselves. We took these categorical variables and converted them into binary numerical variables in order to model them. A low reintegration score is represented by the value of 1 while medium and high reintegration scores are represented by the value of 0. In order to predict the likelihood of a low reintegration score I used the predictor variable of race group which is represented by the symbol $$\lambda^{race group}$$ in the model.
+
+The fourth model can be described by the following equation.
+
+$$P(y = Male,Low Reintegration) = \mbox{logit}^{-1}\left(\psi^{race group}\right) $$
+In this model we are calculating the probability that a male inmate is going to receive a low reintegration score or not. A low reintegration score tends to mean that the inmate has a tougher when released, not afforded the proper resource in order to rehabilitate themselves. We took these categorical variables and converted them into binary numerical variables in order to model them. A low reintegration score is represented by the value of 1 while medium and high reintegration scores are represented by the value of 0. In order to predict the likelihood of a low reintegration score I used the predictor variable of race group which is represented by the symbol $$\psi^{race group}$$ in the model.
+
+# Results
+
+```{r, echo=FALSE}
+
+model1F_dat <- broom::tidy(model1F)
+
+model1F_summary <- model1F_dat %>%
+  kbl(caption = 'Summary Statistics for Model 1') %>%
+  kable_classic_2()  %>%
+  kable_styling(latex_options = "hold_position")
+
+model1F_summary
+
+```
+
+Above are summary statistics for my first model which investigates the relationship between race groups and the likelihood of a female inmate receiving a maximum security level designation. All variables except for the indigenous group are significant as they all fall below a p-value threshold of 0.05, something that is different from the result arrived at by the globe and mail investigation. Those in the indigenous group have a coefficient estimate of 0.1297, other have an estimate of -1.608, the white group has a coefficient estimate of -1.0718 and the black group has an estimate of -1.722.
+
+```{r, echo=FALSE}
+
+model1M_dat <- broom::tidy(model1M)
+
+model1M_summary <- model1M_dat %>%
+  kbl(caption = 'Summary Statistics for Model 2') %>%
+  kable_classic_2()  %>%
+  kable_styling(latex_options = "hold_position")
+
+model1M_summary
+
+```
+
+Above are summary statistics for my second model which investigates the relationship between race groups and the likelihood of a male inmate receiving a maximum security level designation. All variables are significant as they all fall below a p-value threshold of 0.05. Those in the indigenous group have a coefficient estimate of -0.1569, other have an estimate of -0.741, the white group has a coefficient estimate of -0.5163 and the black group has an estimate of -1.3638.
+
+```{r, echo=FALSE}
+
+model2F_dat <- broom::tidy(model2F)
+
+model2F_summary <- model2F_dat %>%
+  kbl(caption = 'Summary Statistics for Model 3') %>%
+  kable_classic_2()  %>%
+  kable_styling(latex_options = "hold_position")
+
+model2F_summary
+
+```
+
+Above are summary statistics for my third model which investigates the relationship between race groups and the likelihood of a female inmate receiving a low reintegration score. All variables are significant as they all fall below a p-value threshold of 0.05. Those in the indigenous group have a coefficient estimate of 0.524, other have an estimate of -0.7913, the white group has a coefficient estimate of -0.3339 and the black group has an estimate of -1.5231.
+
+```{r, echo=FALSE}
+
+model2M_dat <- broom::tidy(model2M)
+
+model2M_summary <- model2M_dat %>%
+  kbl(caption = 'Summary Statistics for Model 4') %>%
+  kable_classic_2()  %>%
+  kable_styling(latex_options = "hold_position")
+
+model2M_summary
+
+```
+
+Above are summary statistics for my fourth model which investigates the relationship between race groups and the likelihood of a male inmate receiving a low reintegration score. All variables are significant as they all fall below a p-value threshold of 0.05. Those in the indigenous group have a coefficient estimate of 0.3981, other have an estimate of -0.867, the white group has a coefficient estimate of -0.0942 and the black group has an estimate of -0.3467.
+
+# Discussion
+
+Issues in the Unites States tend to make international news and can often cause those in other nations to take a look at what is happening in their own backyards. This past summer there was a great deal of turmoil in the United States due to the death of George Floyd and the continued racism people of colour, specifically black communities experience. When the conversation about racism occurs, many in Canada agree that there is systematic racism entrenched within the criminal justice system of the United States. When it comes to looking at our own country the conversation is more split. An example of this was seen when Ontario Premiere Doug Ford acknowledge what was going on in the United States while saying that Canada does not have the same systematic issues that the United States has. There was much to be said on both sides, some agreeing with Premiere Ford and others disagreeing, believing that there is also systematic racism in Canada.
+
+The Globe and Mail article entitled "Bias behind bars: A Globe investigation finds a prison system stacked against Black and Indigenous inmates" (@biasarticle) published on October 24, 2020 spoke to this issue claiming to have statistical evidence that there was a powerful systematic racial bias against Black and Indigenous inmates, dooming them abysmal outcomes after having gone through incarceration. This article sparked controversy as some pointed towards the investigation as proof that systematic racism exists in Canada while other claim that the analysis was faulty and therefore the conclusions made are invalid. In an attempt to speak to this debate I attempted to reproduce the results found by following the steps they outlined in their article entitled "How we did it: How The Globe uncovered systemic bias in prisoners' risk assessments" (@howdid).
+
+I will begin by looking at the distribution of variables of interest in the raw data and what this means for the analysis conducted. First let us consider the offender security level. Upon entry into the prison system the CSC conducts a series of interviews and psychological evaluations in order to determine whether an inmate is to be put in minimum, medium or maximum security. Referring to figures 3, 4 and 5 it can be seen that those who are part of the black and indigenous communities have a higher proportion of individuals who are given a maximum security level designation in comparison to their white counterparts. Being designated a maximum security risk can be devastating to an inmate as it often means that they are not given the proper resources such as rehabilitation or therapy in order to better themselves. It being the case that more black and indigenous inmates are put in this category could point to the fact that these inmates are not given a fair chance from the beginning. A similar trend is seen when we look at the distribution of the reintegration score for the various race groups. Referring to figures 7, 8 and 9 it can be seen that a higher proportion of those in the black and indigenous race groups are given a low reintegration score. When an inmate is getting ready to be released from prison they are given a reintegration score that is low, medium or high based on their behaviour when they were incarcerated. Being given a low reintegration score means that the system does not believe you will do well once released back into the general public meaning they are more strict when it comes to the conditions of an inmate's release and once again not given proper opportunities. This is another indication that black and indigenous inmates are discriminated against as found by the Globe and Mail investigation.
+
+Now let us consider the results of the model. I will focus on the results of the models dealing with male inmates as this is where the Globe and Mail investigation found the most significant results. In the model concerned with the relationship between race groups and the offender security level for male inmates those in the indigenous group have a coefficient estimate of -0.1569, other have an estimate of -0.741, the white group has a coefficient estimate of -0.5163 and the black group has an estimate of -1.3638. This means that black and indigenous inmates are less likely than white inmates to receive a maximum security level designation as their coefficients are more negative. This is the opposite of what the Globe and Mail investigation found as their investigation came to the conclusion that black men are nearly 24% more likely than white men to receive a maximum security rating. This is concerning as it is important that statistical analyses be reproducible. Note that just because different conclusions were made does not mean the questions is not worth investigating. It simply means that further investigation must be done in order to make fine conclusions. Now consider the model concerned with the relationship between race groups and the reintegration score for male inmates. For this model it was found that those in the indigenous group have a coefficient estimate of 0.3981, other have an estimate of -0.867, the white group has a coefficient estimate of -0.0942 and the black group has an estimate of -0.3467. Since the indigenous group has a more positive coefficent than the white group it means that they are more likely to receive a low reintegration score. This is more consistant with what the Globe and Mail investigation found which is that indigenous men were found to be about 30% more likely than their white counterparts to be given a low reintegration score, which keep in mind is the worst possible score. Note that in the model we ran we found an even stronger relationship indicating that indigenous men are more likely to get a low reintegration score. The fact that both analyses came to similar conclusions strengthens the given finding.
+
+Note that there are a few weaknesses and limitations in this investigation. A significant weakness is that only one predictor value - race group - was used. It is possible that there are other variables that have a confounding effect on the relationship between race and the given score that was not considered. Note that this was largely due to the ambiguity of the Globe and Mail's steps. When reading through the methodology used the Globe and Mail indicates that they 'considered multiple variables' but then do not specify which variables they used. As a result a judgment call had to be made to focus only on the variable of interest which is the race group. Another weakness was that past history and type of offense was not taken into consideration when running the model. This was once again due to the lack of clarity in the Globe and Mail's analysis. They spoke of accounting for the type of offence by handmatching the charges to the Uniform Crime Reporting Survey offence categories and cross-referenced to Statistics Canada’s crime severity index weights without providing these values. When searching for offence categories and severity index weights these values were not readily available. When performing a statistical analysis and making bold claims as the Globe and Mail did it is important that the analysis be reproducible. In attempting to reproduce the results found it proved to be difficult as instructions were not explicitly clear and no code was provided. The only data provided by the Globe and Mail was the raw dataset given to them by the CSC. As a next step it would be adventagoud is those who conducted the investigation were to release details and explicit steps and code in an effort to be transparent about their research. If this were done it would be much easier to see what was done and hopefully reproduce the results in order to strengthen their findings. As of now the results are not easily reproducible and therefore the conclusions lose validity.
+
+\newpage
+
+# References
